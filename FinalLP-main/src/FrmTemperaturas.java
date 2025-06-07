@@ -4,6 +4,7 @@ import servicios.TemperaturasServicios;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
+import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.data.category.DefaultCategoryDataset;
 
@@ -128,17 +129,6 @@ public class FrmTemperaturas extends JFrame {
         btnAbrir.addActionListener(this::abrirArchivo);
         tb.add(btnAbrir);
 
-        dccDesde = new DateChooserCombo();
-        dccHasta = new DateChooserCombo();
-
-        JPanel pnlControles = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        pnlControles.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
-
-        pnlControles.add(new JLabel("Desde:"));
-        pnlControles.add(dccDesde);
-        pnlControles.add(new JLabel("Hasta:"));
-        pnlControles.add(dccHasta);
-
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.gridwidth = 2;
@@ -159,12 +149,12 @@ public class FrmTemperaturas extends JFrame {
 
         tpCambiosMoneda.addTab("Consultas", pnlConsultas);
 
-        pnlPrincipal.add(pnlControles);
         pnlPrincipal.add(tpCambiosMoneda);
 
         getContentPane().add(tb, BorderLayout.NORTH);
         getContentPane().add(pnlPrincipal, BorderLayout.CENTER);
 
+        TemperaturasServicios.ordenarPorCiudadYFecha(datos);
         actualizarTabla();
 
     }
@@ -208,6 +198,7 @@ public class FrmTemperaturas extends JFrame {
                         LocalDate.parse(txtFecha.getText(), formato),
                         Double.parseDouble(txtTemperatura.getText()));
                 TemperaturasServicios.agregar(datos, nuevo);
+                TemperaturasServicios.ordenarPorCiudadYFecha(datos);
                 actualizarTabla();
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(this,
@@ -252,7 +243,7 @@ public class FrmTemperaturas extends JFrame {
                         LocalDate.parse(txtFecha.getText(), formato),
                         Double.parseDouble(txtTemperatura.getText()));
                 TemperaturasServicios.modificar(datos, fila, actualizado);
-
+                TemperaturasServicios.ordenarPorCiudadYFecha(datos);
                 actualizarTabla();
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(this,
@@ -282,23 +273,37 @@ public class FrmTemperaturas extends JFrame {
     }
 
     private void guardarCambios(ActionEvent evt) {
-        JFileChooser fileChooser = new JFileChooser(); // Crear un selector de archivos
-        fileChooser.setDialogTitle("Guardar archivo"); // Establecer el título del diálogo
-        fileChooser.setSelectedFile(new java.io.File("Temperaturas.csv")); // Establecer el nombre de archivo
-                                                                           // predeterminado
-
-        int seleccion = fileChooser.showSaveDialog(this); // Mostrar el diálogo de guardar
-        if (seleccion == JFileChooser.APPROVE_OPTION) { // Si el usuario hace clic en "Guardar"
-            String ruta = fileChooser.getSelectedFile().getAbsolutePath(); // Obtener la ruta seleccionada por el
-                                                                           // usuario
-            TemperaturasServicios.guardarEnArchivo(ruta, datos); // Llamar al método para guardar los datos
-            JOptionPane.showMessageDialog(this,
-                    "Datos guardados correctamente en: " + ruta,
-                    "Guardar", JOptionPane.INFORMATION_MESSAGE);
-        }
+        TemperaturasServicios.guardarEnArchivo(RUTA_ARCHIVO, datos);
+        JOptionPane.showMessageDialog(this,
+                "Datos guardados correctamente",
+                "Guardar", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void mostrarGrafica(ActionEvent evt) {
+        // Crear panel de fechas si no existe
+        if (dccDesde == null) {
+            dccDesde = new DateChooserCombo();
+            dccHasta = new DateChooserCombo();
+
+            JPanel pnlFechas = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            pnlFechas.add(new JLabel("Desde:"));
+            pnlFechas.add(dccDesde);
+            pnlFechas.add(new JLabel("Hasta:"));
+            pnlFechas.add(dccHasta);
+
+            JButton btnGenerar = new JButton("Generar Gráfica");
+            btnGenerar.addActionListener(e -> generarGrafica());
+            pnlFechas.add(btnGenerar);
+
+            // Añadir el panel de fechas al NORTH del panel principal de gráfica
+            pnlGrafica.add(pnlFechas, BorderLayout.NORTH);
+        }
+
+        // Cambiar a la pestaña de la gráfica
+        tpCambiosMoneda.setSelectedIndex(1);
+    }
+
+    private void generarGrafica() {
         LocalDate desde = dccDesde.getSelectedDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         LocalDate hasta = dccHasta.getSelectedDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
 
@@ -319,8 +324,33 @@ public class FrmTemperaturas extends JFrame {
         DefaultCategoryDataset dataset = TemperaturasServicios.getDatosGraficaBarras(promedios);
         JFreeChart grafica = TemperaturasServicios.getGraficaBarras(dataset,
                 "Promedio de Temperaturas: " + desde + " a " + hasta);
-        TemperaturasServicios.mostrarGraficaBarras(pnlGrafica, grafica);
-        tpCambiosMoneda.setSelectedIndex(1);
+
+        // Crear un panel para la gráfica (sin afectar el panel de fechas)
+        JPanel pnlContenedorGrafica = new JPanel(new BorderLayout());
+        ChartPanel panelGrafica = new ChartPanel(grafica);
+        pnlContenedorGrafica.add(panelGrafica, BorderLayout.CENTER);
+
+        // Limpiar solo el CENTER del panel principal (conservando NORTH con las fechas)
+        pnlGrafica.removeAll();
+        pnlGrafica.add(pnlContenedorGrafica, BorderLayout.CENTER);
+
+        // Si el panel de fechas no está, lo volvemos a añadir
+        if (dccDesde != null) {
+            JPanel pnlFechas = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            pnlFechas.add(new JLabel("Desde:"));
+            pnlFechas.add(dccDesde);
+            pnlFechas.add(new JLabel("Hasta:"));
+            pnlFechas.add(dccHasta);
+
+            JButton btnGenerar = new JButton("Generar Gráfica");
+            btnGenerar.addActionListener(e -> generarGrafica());
+            pnlFechas.add(btnGenerar);
+
+            pnlGrafica.add(pnlFechas, BorderLayout.NORTH);
+        }
+
+        pnlGrafica.revalidate();
+        pnlGrafica.repaint();
     }
 
     private void consultarFechaEspecifica(ActionEvent evt) {
