@@ -1,4 +1,6 @@
 Ciudad,Fecha,Temperatura
+Americano,10/06/2025,300.0
+Arroz,10/06/2025,10.0
 Barranquilla,01/01/2024,27.9
 Barranquilla,02/01/2024,28.3
 Barranquilla,03/01/2024,28.0
@@ -6,7 +8,6 @@ Barranquilla,04/01/2024,28.2
 Barranquilla,05/01/2024,27.8
 Barranquilla,08/01/2024,27.7
 Barranquilla,09/01/2024,28.4
-Barranquilla,10/01/2024,28.2
 Bogotá,01/01/2024,14.5
 Bogotá,02/01/2024,15.0
 Bogotá,03/01/2024,13.8
@@ -49,3 +50,4 @@ Medellín,07/01/2024,22.0
 Medellín,08/01/2024,22.2
 Medellín,09/01/2024,22.6
 Medellín,10/01/2024,21.8
+Papitas,07/06/2025,28.2
